@@ -25,8 +25,8 @@ from aiogram.types import (
 )
 
 # --- Настройки -------------------------------------------------------------
-BOT_TOKEN = "ВСТАВЬ_СЮДА_ТОКЕН_ОТ_BOTFATHER"
-WEBAPP_URL = "https://gta-farm-hub.vercel.app"  # URL Mini App после деплоя на Vercel
+BOT_TOKEN = "9269943660:AAE5zBGtbwQfn_tIQE6Og1p8LSybeFS2-s4"
+WEBAPP_URL = "gtahelper.vercel.app"  # URL Mini App после деплоя на Vercel
 # ---------------------------------------------------------------------------
 
 dp = Dispatcher()
