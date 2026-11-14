@@ -1,6 +1,6 @@
 "use client";
 
-import { Home, ListChecks, Settings2, type LucideIcon } from "lucide-react";
+import { Home, ListChecks, Settings2, Timer, type LucideIcon } from "lucide-react";
 import { motion } from "framer-motion";
 
 import { cn } from "@/lib/utils";
@@ -10,6 +10,7 @@ import { useAppStore, type TabId } from "@/store/app-store";
 const TABS: { id: TabId; label: string; icon: LucideIcon }[] = [
   { id: "home", label: "Главная", icon: Home },
   { id: "farm", label: "Фарм BP", icon: ListChecks },
+  { id: "timers", label: "Таймеры", icon: Timer },
   { id: "settings", label: "Настройки", icon: Settings2 },
 ];
 
@@ -31,7 +32,7 @@ export function TabBar() {
       className="fixed inset-x-0 bottom-0 z-40 border-t border-white/10 bg-[#15171a]/95 backdrop-blur-xl"
       style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
     >
-      <div className="mx-auto grid w-full max-w-md grid-cols-3">
+      <div className="mx-auto grid w-full max-w-md grid-cols-4">
         {TABS.map((tab) => {
           const active = tab.id === activeTab;
           return (

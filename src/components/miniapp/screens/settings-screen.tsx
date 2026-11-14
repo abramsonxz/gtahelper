@@ -140,7 +140,7 @@ export function SettingsScreen() {
     >
       <motion.div variants={fadeUpItem}>
         <SectionHeading
-          kicker="Раздел 03"
+          kicker="Раздел 04"
           title="Настройки"
           desc="Профиль, поведение приложения и локальные данные."
         />

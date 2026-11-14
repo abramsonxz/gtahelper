@@ -3,7 +3,7 @@ import { persist } from "zustand/middleware";
 
 import { farmDayIndex } from "@/lib/farm";
 
-export type TabId = "home" | "farm" | "settings";
+export type TabId = "home" | "farm" | "timers" | "settings";
 
 export interface AppSettings {
   /** Тактильный отклик при нажатиях (HapticFeedback) */
@@ -35,6 +35,9 @@ export interface FarmState {
   onlyFavorites: boolean;
 }
 
+/** id таймера → отметка времени окончания (мс). Отсутствие = не запущен */
+export type Timers = Record<string, number>;
+
 interface AppState {
   activeTab: TabId;
   nickname: string;
@@ -42,11 +45,17 @@ interface AppState {
   /** Сколько раз запускали приложение (счётчик живёт в localStorage) */
   visits: number;
   farm: FarmState;
+  /** Персональные кулдауны: id таймера → время окончания */
+  timers: Timers;
   setActiveTab: (tab: TabId) => void;
   setNickname: (name: string) => void;
   updateSetting: <K extends keyof AppSettings>(key: K, value: AppSettings[K]) => void;
   setVip: (value: boolean) => void;
   setX2: (value: boolean) => void;
+  /** Запустить/перезапустить таймер: id + длительность в миллисекундах */
+  startTimer: (id: string, durationMs: number) => void;
+  /** Сбросить таймер в исходное (не запущен) состояние */
+  resetTimer: (id: string) => void;
   toggleTask: (id: string) => void;
   incTask: (id: string) => void;
   decTask: (id: string) => void;
@@ -79,6 +88,7 @@ export const useAppStore = create<AppState>()(
       settings: { ...DEFAULT_SETTINGS },
       visits: 0,
       farm: initialFarm(),
+      timers: {},
 
       setActiveTab: (activeTab) => set({ activeTab }),
       setNickname: (nickname) => set({ nickname: nickname.trim().slice(0, 24) }),
@@ -87,6 +97,19 @@ export const useAppStore = create<AppState>()(
 
       setVip: (vip) => set((s) => ({ farm: { ...s.farm, vip } })),
       setX2: (x2) => set((s) => ({ farm: { ...s.farm, x2 } })),
+
+      startTimer: (id, durationMs) =>
+        set((s) => ({
+          timers: { ...s.timers, [id]: Date.now() + durationMs },
+        })),
+
+      resetTimer: (id) =>
+        set((s) => {
+          if (!(id in s.timers)) return {};
+          const timers = { ...s.timers };
+          delete timers[id];
+          return { timers };
+        }),
 
       toggleTask: (id) =>
         set((s) => {
@@ -143,13 +166,15 @@ export const useAppStore = create<AppState>()(
           settings: { ...DEFAULT_SETTINGS },
           visits: 0,
           farm: initialFarm(),
+          timers: {},
         }),
     }),
     {
       name: STORAGE_KEY,
-      version: 3,
+      version: 4,
       // v1→2 — оболочка без раздела фарма: добавляем ферму с чистого листа
       // v2→3 — убрали настройку «Звук интерфейса»: зачищаем устаревший ключ
+      // v3→4 — раздел «Таймеры»: добавляем кулдауны с чистого листа
       migrate: (persisted, version) => {
         const base = (persisted ?? {}) as Partial<AppState>;
         const farm = version < 2 || !base.farm ? initialFarm() : base.farm;
@@ -159,7 +184,8 @@ export const useAppStore = create<AppState>()(
           };
           base.settings = settings;
         }
-        return { ...base, farm } as AppState;
+        const timers = version < 4 || !base.timers ? {} : base.timers;
+        return { ...base, farm, timers } as AppState;
       },
     }
   )
