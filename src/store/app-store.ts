@@ -3,7 +3,7 @@ import { persist } from "zustand/middleware";
 
 import { farmDayIndex } from "@/lib/farm";
 
-export type TabId = "home" | "farm" | "timers" | "settings";
+export type TabId = "home" | "farm" | "timers" | "todo" | "settings";
 
 export interface AppSettings {
   /** Тактильный отклик при нажатиях (HapticFeedback) */
@@ -41,6 +41,20 @@ export type Timers = Record<string, number>;
 /** Подкатегория раздела «Таймеры» */
 export type TimersView = "personal" | "clubs";
 
+/** Задача планировщика TO-DO */
+export interface TodoItem {
+  id: string;
+  title: string;
+  /** Дата создания (мс) — задаёт позицию в списке */
+  createdAt: number;
+  /** Выполнена. Выполненные НЕ удаляются автоматически — только вручную */
+  done: boolean;
+  /** Когда отметили выполненной (мс) */
+  doneAt?: number;
+  /** Закреплена звёздочкой — всегда вверху списка */
+  starred: boolean;
+}
+
 interface AppState {
   activeTab: TabId;
   nickname: string;
@@ -52,8 +66,20 @@ interface AppState {
   timers: Timers;
   /** Какая подкатегория таймеров открыта: обычные или клубы */
   timersView: TimersView;
+  /** Задачи планировщика TO-DO */
+  todos: TodoItem[];
   setActiveTab: (tab: TabId) => void;
   setTimersView: (view: TimersView) => void;
+  /** Добавить задачу (пустые и пробельные названия игнорируются) */
+  addTodo: (title: string) => void;
+  /** Отметить/снять выполнение (doneAt ставится/чистится) */
+  toggleTodoDone: (id: string) => void;
+  /** Закрепить/открепить звёздочкой */
+  toggleTodoStar: (id: string) => void;
+  /** Удалить одну задачу — только вручную */
+  removeTodo: (id: string) => void;
+  /** Удалить все выполненные разом — тоже ручное действие */
+  removeDoneTodos: () => void;
   setNickname: (name: string) => void;
   updateSetting: <K extends keyof AppSettings>(key: K, value: AppSettings[K]) => void;
   setVip: (value: boolean) => void;
@@ -96,9 +122,45 @@ export const useAppStore = create<AppState>()(
       farm: initialFarm(),
       timers: {},
       timersView: "personal",
+      todos: [],
 
       setActiveTab: (activeTab) => set({ activeTab }),
       setTimersView: (timersView) => set({ timersView }),
+
+      addTodo: (title) =>
+        set((s) => {
+          const clean = title.trim().slice(0, 80);
+          if (!clean) return {};
+          const todo: TodoItem = {
+            id: `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`,
+            title: clean,
+            createdAt: Date.now(),
+            done: false,
+            starred: false,
+          };
+          return { todos: [...s.todos, todo] };
+        }),
+
+      toggleTodoDone: (id) =>
+        set((s) => ({
+          todos: s.todos.map((t) =>
+            t.id === id
+              ? { ...t, done: !t.done, doneAt: t.done ? undefined : Date.now() }
+              : t
+          ),
+        })),
+
+      toggleTodoStar: (id) =>
+        set((s) => ({
+          todos: s.todos.map((t) =>
+            t.id === id ? { ...t, starred: !t.starred } : t
+          ),
+        })),
+
+      removeTodo: (id) => set((s) => ({ todos: s.todos.filter((t) => t.id !== id) })),
+
+      removeDoneTodos: () =>
+        set((s) => ({ todos: s.todos.filter((t) => !t.done) })),
       setNickname: (nickname) => set({ nickname: nickname.trim().slice(0, 24) }),
       updateSetting: (key, value) =>
         set((state) => ({ settings: { ...state.settings, [key]: value } })),
@@ -176,15 +238,17 @@ export const useAppStore = create<AppState>()(
           farm: initialFarm(),
           timers: {},
           timersView: "personal",
+          todos: [],
         }),
     }),
     {
       name: STORAGE_KEY,
-      version: 5,
+      version: 6,
       // v1→2 — оболочка без раздела фарма: добавляем ферму с чистого листа
       // v2→3 — убрали настройку «Звук интерфейса»: зачищаем устаревший ключ
       // v3→4 — раздел «Таймеры»: добавляем кулдауны с чистого листа
       // v4→5 — «Задание клуба» переехал в подкатегорию «Клубы»: чистим старый ключ
+      // v5→6 — раздел TO-DO: добавляем список задач с чистого листа
       migrate: (persisted, version) => {
         const base = (persisted ?? {}) as Partial<AppState>;
         const farm = version < 2 || !base.farm ? initialFarm() : base.farm;
@@ -199,7 +263,8 @@ export const useAppStore = create<AppState>()(
         delete timers["club-task"];
         const timersView =
           version < 5 || !base.timersView ? "personal" : base.timersView;
-        return { ...base, farm, timers, timersView } as AppState;
+        const todos = version < 6 || !base.todos ? [] : base.todos;
+        return { ...base, farm, timers, timersView, todos } as AppState;
       },
     }
   )

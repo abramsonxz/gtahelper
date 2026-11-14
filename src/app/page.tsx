@@ -11,6 +11,7 @@ import { TabBar } from "@/components/miniapp/tab-bar";
 import { HomeScreen } from "@/components/miniapp/screens/home-screen";
 import { FarmScreen } from "@/components/miniapp/screens/farm-screen";
 import { TimersScreen } from "@/components/miniapp/screens/timers-screen";
+import { TodoScreen } from "@/components/miniapp/screens/todo-screen";
 import { SettingsScreen } from "@/components/miniapp/screens/settings-screen";
 
 /** Считаем запуск один раз за жизнь страницы (устойчиво к Strict Mode) */
@@ -64,6 +65,7 @@ export default function Page() {
                 {activeTab === "home" ? <HomeScreen /> : null}
                 {activeTab === "farm" ? <FarmScreen /> : null}
                 {activeTab === "timers" ? <TimersScreen /> : null}
+                {activeTab === "todo" ? <TodoScreen /> : null}
                 {activeTab === "settings" ? <SettingsScreen /> : null}
               </motion.div>
             </AnimatePresence>

@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { HardDrive, ListChecks, Timer } from "lucide-react";
+import { HardDrive, ListChecks, ListTodo, Timer } from "lucide-react";
 
 import { haptic } from "@/lib/telegram";
 import { useAppStore } from "@/store/app-store";
@@ -43,6 +43,11 @@ export function HomeScreen() {
 
   const goTimers = () => {
     setActiveTab("timers");
+    haptic("select", haptics);
+  };
+
+  const goTodo = () => {
+    setActiveTab("todo");
     haptic("select", haptics);
   };
 
@@ -107,9 +112,10 @@ export function HomeScreen() {
       </motion.div>
 
       {/* ===== Быстрые действия ===== */}
-      <motion.div variants={fadeUpItem} className="grid grid-cols-2 gap-3">
-        <HudButton primary icon={ListChecks} label="К фарму" onClick={goFarm} />
-        <HudButton icon={Timer} label="Таймеры" onClick={goTimers} />
+      <motion.div variants={fadeUpItem} className="grid grid-cols-3 gap-2">
+        <HudButton primary icon={ListChecks} label="К фарму" onClick={goFarm} className="px-2" />
+        <HudButton icon={Timer} label="Таймеры" onClick={goTimers} className="px-2" />
+        <HudButton icon={ListTodo} label="TO-DO" onClick={goTodo} className="px-2" />
       </motion.div>
 
       {/* ===== Баннер про локальные данные ===== */}

@@ -1,6 +1,13 @@
 "use client";
 
-import { Home, ListChecks, Settings2, Timer, type LucideIcon } from "lucide-react";
+import {
+  Home,
+  ListChecks,
+  ListTodo,
+  Settings2,
+  Timer,
+  type LucideIcon,
+} from "lucide-react";
 import { motion } from "framer-motion";
 
 import { cn } from "@/lib/utils";
@@ -11,6 +18,7 @@ const TABS: { id: TabId; label: string; icon: LucideIcon }[] = [
   { id: "home", label: "Главная", icon: Home },
   { id: "farm", label: "Фарм BP", icon: ListChecks },
   { id: "timers", label: "Таймеры", icon: Timer },
+  { id: "todo", label: "TO-DO", icon: ListTodo },
   { id: "settings", label: "Настройки", icon: Settings2 },
 ];
 
@@ -32,7 +40,7 @@ export function TabBar() {
       className="fixed inset-x-0 bottom-0 z-40 border-t border-white/10 bg-[#15171a]/95 backdrop-blur-xl"
       style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
     >
-      <div className="mx-auto grid w-full max-w-md grid-cols-4">
+      <div className="mx-auto grid w-full max-w-md grid-cols-5">
         {TABS.map((tab) => {
           const active = tab.id === activeTab;
           return (
@@ -60,7 +68,7 @@ export function TabBar() {
               />
               <span
                 className={cn(
-                  "font-display text-[10px] font-medium uppercase tracking-[0.14em] transition-colors",
+                  "font-display text-[9px] font-medium uppercase tracking-[0.1em] transition-colors",
                   active ? "text-primary" : "text-muted-foreground"
                 )}
               >
