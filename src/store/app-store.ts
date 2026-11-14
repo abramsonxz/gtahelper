@@ -38,6 +38,9 @@ export interface FarmState {
 /** id таймера → отметка времени окончания (мс). Отсутствие = не запущен */
 export type Timers = Record<string, number>;
 
+/** Подкатегория раздела «Таймеры» */
+export type TimersView = "personal" | "clubs";
+
 interface AppState {
   activeTab: TabId;
   nickname: string;
@@ -47,7 +50,10 @@ interface AppState {
   farm: FarmState;
   /** Персональные кулдауны: id таймера → время окончания */
   timers: Timers;
+  /** Какая подкатегория таймеров открыта: обычные или клубы */
+  timersView: TimersView;
   setActiveTab: (tab: TabId) => void;
+  setTimersView: (view: TimersView) => void;
   setNickname: (name: string) => void;
   updateSetting: <K extends keyof AppSettings>(key: K, value: AppSettings[K]) => void;
   setVip: (value: boolean) => void;
@@ -89,8 +95,10 @@ export const useAppStore = create<AppState>()(
       visits: 0,
       farm: initialFarm(),
       timers: {},
+      timersView: "personal",
 
       setActiveTab: (activeTab) => set({ activeTab }),
+      setTimersView: (timersView) => set({ timersView }),
       setNickname: (nickname) => set({ nickname: nickname.trim().slice(0, 24) }),
       updateSetting: (key, value) =>
         set((state) => ({ settings: { ...state.settings, [key]: value } })),
@@ -167,14 +175,16 @@ export const useAppStore = create<AppState>()(
           visits: 0,
           farm: initialFarm(),
           timers: {},
+          timersView: "personal",
         }),
     }),
     {
       name: STORAGE_KEY,
-      version: 4,
+      version: 5,
       // v1→2 — оболочка без раздела фарма: добавляем ферму с чистого листа
       // v2→3 — убрали настройку «Звук интерфейса»: зачищаем устаревший ключ
       // v3→4 — раздел «Таймеры»: добавляем кулдауны с чистого листа
+      // v4→5 — «Задание клуба» переехал в подкатегорию «Клубы»: чистим старый ключ
       migrate: (persisted, version) => {
         const base = (persisted ?? {}) as Partial<AppState>;
         const farm = version < 2 || !base.farm ? initialFarm() : base.farm;
@@ -184,8 +194,12 @@ export const useAppStore = create<AppState>()(
           };
           base.settings = settings;
         }
-        const timers = version < 4 || !base.timers ? {} : base.timers;
-        return { ...base, farm, timers } as AppState;
+        const timers =
+          version < 4 || !base.timers ? {} : { ...base.timers };
+        delete timers["club-task"];
+        const timersView =
+          version < 5 || !base.timersView ? "personal" : base.timersView;
+        return { ...base, farm, timers, timersView } as AppState;
       },
     }
   )

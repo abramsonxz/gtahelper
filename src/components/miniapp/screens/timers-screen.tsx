@@ -4,21 +4,34 @@ import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
 import {
-  Briefcase,
+  Bike,
   Car,
   Check,
+  Crosshair,
+  Eye,
   Heart,
   Play,
   RotateCcw,
+  Shield,
   Target,
   Timer as TimerIcon,
+  Truck,
+  Users,
   X,
   type LucideIcon,
 } from "lucide-react";
 
 import { haptic } from "@/lib/telegram";
-import { useAppStore } from "@/store/app-store";
-import { TIMERS, formatClock, formatDuration } from "@/data/timers";
+import { useAppStore, type TimersView } from "@/store/app-store";
+import {
+  ALL_TIMERS,
+  CLUB_TIMERS,
+  TIMERS,
+  formatClock,
+  formatDuration,
+  pluralTimer,
+  type TimerDef,
+} from "@/data/timers";
 import { formatHms } from "@/lib/farm";
 import { cn } from "@/lib/utils";
 import {
@@ -30,10 +43,19 @@ import {
 /** Иконка каждого таймера — чтобы карточки различались с одного взгляда */
 const TIMER_ICONS: Record<string, LucideIcon> = {
   tir: Target,
-  "club-task": Briefcase,
   "car-theft": Car,
   sutenerka: Heart,
+  "club-rednecks": Truck,
+  "club-motoclub": Bike,
+  "club-epsilon": Eye,
+  "club-merryweather": Shield,
 };
+
+/** Подкатегории раздела «Таймеры» */
+const VIEW_TABS: { id: TimersView; label: string; icon: LucideIcon }[] = [
+  { id: "personal", label: "Обычные", icon: Crosshair },
+  { id: "clubs", label: "Клубы", icon: Users },
+];
 
 interface TimerCardProps {
   id: string;
@@ -187,6 +209,8 @@ export function TimersScreen() {
   const timers = useAppStore((s) => s.timers);
   const startTimer = useAppStore((s) => s.startTimer);
   const resetTimer = useAppStore((s) => s.resetTimer);
+  const timersView = useAppStore((s) => s.timersView);
+  const setTimersView = useAppStore((s) => s.setTimersView);
   const { haptics } = useAppStore((s) => s.settings);
 
   // Общий «тик» раз в секунду — двигает все отсчёты сразу
@@ -197,10 +221,12 @@ export function TimersScreen() {
   }, []);
 
   // Момент перехода таймера в «готово» (только при открытом приложении):
-  // тихий до этого секундный остаток → тост + вибрация
+  // тихий до этого секундный остаток → тост + вибрация.
+  // Следим за всеми таймерами сразу — тост сработает, даже если открыт
+  // другая подкатегория.
   const prevRemaining = useRef<Record<string, number>>({});
   useEffect(() => {
-    for (const t of TIMERS) {
+    for (const t of ALL_TIMERS) {
       const endsAt = timers[t.id];
       if (!endsAt) continue;
       const remaining = endsAt - now;
@@ -215,10 +241,23 @@ export function TimersScreen() {
     }
   }, [now, timers, haptics]);
 
-  const runningCount = TIMERS.filter((t) => {
-    const endsAt = timers[t.id];
-    return endsAt !== undefined && endsAt > now;
-  }).length;
+  const list: TimerDef[] = timersView === "clubs" ? CLUB_TIMERS : TIMERS;
+
+  const runningCountIn = (view: TimersView): number => {
+    const group = view === "clubs" ? CLUB_TIMERS : TIMERS;
+    return group.filter((t) => {
+      const endsAt = timers[t.id];
+      return endsAt !== undefined && endsAt > now;
+    }).length;
+  };
+
+  const runningCount = runningCountIn(timersView);
+
+  const switchView = (view: TimersView) => {
+    if (view === timersView) return;
+    setTimersView(view);
+    haptic("select", haptics);
+  };
 
   return (
     <motion.div
@@ -231,8 +270,60 @@ export function TimersScreen() {
         <SectionHeading
           kicker="Раздел 03"
           title="Таймеры"
-          desc="Личные кулдауны: запусти и закрывай приложение — отсчёт продолжается."
+          desc="Обычные кулдауны и клубы: запусти и закрывай приложение — отсчёт продолжается."
         />
+      </motion.div>
+
+      {/* Переключатель подкатегорий: Обычные / Клубы */}
+      <motion.div
+        variants={fadeUpItem}
+        className="grid grid-cols-2 border border-white/10 bg-[#1b1e22]"
+      >
+        {VIEW_TABS.map((vt) => {
+          const active = vt.id === timersView;
+          const running = runningCountIn(vt.id);
+          return (
+            <motion.button
+              key={vt.id}
+              type="button"
+              whileTap={{ scale: 0.97 }}
+              onClick={() => switchView(vt.id)}
+              aria-pressed={active}
+              className="relative flex h-12 items-center justify-center gap-2"
+            >
+              {active ? (
+                <motion.span
+                  layoutId="timers-seg-notch"
+                  className="hud-glow absolute inset-x-4 bottom-0 h-[2px] bg-primary"
+                  transition={{ type: "spring", stiffness: 420, damping: 34 }}
+                />
+              ) : null}
+
+              <vt.icon
+                className={cn(
+                  "size-4 transition-colors",
+                  active ? "text-primary" : "text-muted-foreground"
+                )}
+              />
+              <span
+                className={cn(
+                  "font-display text-xs font-semibold uppercase tracking-[0.14em] transition-colors",
+                  active ? "text-foreground" : "text-muted-foreground"
+                )}
+              >
+                {vt.label}
+              </span>
+
+              {/* Пульсирующая точка: в группе что-то идёт */}
+              {running > 0 ? (
+                <span className="relative flex size-2" aria-label={`${running} идут`}>
+                  <span className="absolute inline-flex size-full animate-ping rounded-full bg-primary/60" />
+                  <span className="relative inline-flex size-2 rounded-full bg-primary" />
+                </span>
+              ) : null}
+            </motion.button>
+          );
+        })}
       </motion.div>
 
       {/* Сводка */}
@@ -242,14 +333,22 @@ export function TimersScreen() {
             {runningCount > 0 ? `Идёт отсчёт: ${runningCount}` : "Ни один не запущен"}
           </span>
           <span className="font-mono text-[10px] tnum text-muted-foreground/70">
-            {TIMERS.length} кулдауна
+            {timersView === "clubs"
+              ? `${list.length} клуба · по 2 ч`
+              : `${list.length} ${pluralTimer(list.length)}`}
           </span>
         </div>
       </motion.div>
 
-      {/* Карточки-таймеры */}
-      <div className="flex flex-col gap-3">
-        {TIMERS.map((t) => (
+      {/* Карточки-таймеры текущей подкатегории */}
+      <motion.div
+        key={timersView}
+        variants={staggerContainer}
+        initial="hidden"
+        animate="show"
+        className="flex flex-col gap-3"
+      >
+        {list.map((t) => (
           <TimerCard
             key={t.id}
             id={t.id}
@@ -262,7 +361,7 @@ export function TimersScreen() {
             hapticsEnabled={haptics}
           />
         ))}
-      </div>
+      </motion.div>
 
       {/* Подсказка */}
       <motion.div variants={fadeUpItem}>
